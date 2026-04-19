@@ -1,0 +1,20 @@
+# IntelliJ
+.idea/
+*.iml
+out/
+
+# Build
+target/
+build/
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+
+# Env
+.env
+
+# Docker volumes
+data/
