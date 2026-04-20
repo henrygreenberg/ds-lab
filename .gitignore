@@ -1,20 +1,6 @@
-# IntelliJ
+# IntelliJ IDEA
 .idea/
 *.iml
-out/
 
-# Build
-target/
-build/
-
-# Logs
-*.log
-
-# OS
-.DS_Store
-
-# Env
+# Environment
 .env
-
-# Docker volumes
-data/

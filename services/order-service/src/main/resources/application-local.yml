@@ -1,0 +1,12 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:${POSTGRES_PORT}/${POSTGRES_DB}
+    username: ${APP_DB_USER}
+    password: ${APP_DB_PASSWORD}
+
+  jpa:
+    show-sql: true
+
+  properties:
+    hibernate:
+      format_sql: true
