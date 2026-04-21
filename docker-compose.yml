@@ -4,7 +4,7 @@ services:
     container_name: ds_postgres
     restart: unless-stopped
     env_file:
-      - ..env
+      - .env
     ports:
       - "${POSTGRES_PORT}:5432"
     volumes:
@@ -12,14 +12,18 @@ services:
       - ./infrastructure/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
 
   kafka:
-    image: bitnami/kafka:3.7.0
+    image: bitnamilegacy/kafka:3.7
     container_name: kafka
     ports:
       - "${KAFKA_PORT}:${KAFKA_PORT}"
+    volumes:
+      - kafka_data:/bitnami
     environment:
+      # KRaft settings
       - KAFKA_ENABLE_KRAFT=yes
       - KAFKA_CFG_NODE_ID=${KAFKA_NODE_ID}
       - KAFKA_CFG_PROCESS_ROLES=broker,controller
+      # Listeners
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=${KAFKA_NODE_ID}@kafka:${KAFKA_CONTROLLER_PORT}
       - KAFKA_CFG_LISTENERS=PLAINTEXT://:${KAFKA_PORT},CONTROLLER://:${KAFKA_CONTROLLER_PORT}
       - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://localhost:${KAFKA_PORT}
@@ -39,3 +43,4 @@ services:
 
 volumes:
   postgres_data:
+  kafka_data:
