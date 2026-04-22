@@ -6,14 +6,11 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.Random;
 import java.util.UUID;
 
 @Component
 @Primary
 public class StubProductServiceClient implements ProductServiceClient {
-
-    private final Random random = new Random();
 
     @Override
     public ProductData getProduct(UUID productId) {
