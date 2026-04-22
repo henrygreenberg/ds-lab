@@ -1,0 +1,5 @@
+[versions]
+spring-boot = "4.0.5"
+spring-dependency = "1.1.7"
+java = "21"
+spotless = "8.4.0"
