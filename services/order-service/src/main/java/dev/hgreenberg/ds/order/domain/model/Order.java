@@ -1,7 +1,6 @@
 package dev.hgreenberg.ds.order.domain.model;
 
 import jakarta.persistence.*;
-
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.*;
@@ -10,144 +9,149 @@ import java.util.*;
 @Table(name = "orders")
 public class Order {
 
-    @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
-    private final List<OrderItem> items = new ArrayList<>();
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
-    @Column(nullable = false, updatable = false)
-    private UUID customerId;
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private OrderStatus status;
-    @Column(nullable = false)
-    private BigDecimal totalAmount;
-    @Column(nullable = false, updatable = false)
-    private Instant createdAt;
+  @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
+  private final List<OrderItem> items = new ArrayList<>();
 
-    // --- JPA constructor ---
-    protected Order() {
+  @Id
+  @GeneratedValue(strategy = GenerationType.UUID)
+  private UUID id;
+
+  @Column(nullable = false, updatable = false)
+  private UUID customerId;
+
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private OrderStatus status;
+
+  @Column(nullable = false)
+  private BigDecimal totalAmount;
+
+  @Column(nullable = false, updatable = false)
+  private Instant createdAt;
+
+  // --- JPA constructor ---
+  protected Order() {}
+
+  // --- Factory method ---
+  public static Order create(UUID customerId) {
+    Objects.requireNonNull(customerId, "customerId must not be null");
+
+    Order order = new Order();
+    order.customerId = customerId;
+    order.status = OrderStatus.CREATED;
+    order.totalAmount = BigDecimal.ZERO;
+    order.createdAt = Instant.now();
+
+    return order;
+  }
+
+  // --- Domain behavior ---
+
+  public void addItem(UUID productId, BigDecimal price, int quantity) {
+    ensureModifiable();
+
+    validateItem(productId, price, quantity);
+
+    OrderItem item = new OrderItem(this, productId, price, quantity);
+    items.add(item);
+
+    recalculateTotal();
+  }
+
+  public void removeItem(UUID productId) {
+    ensureModifiable();
+
+    items.removeIf(i -> i.getProductId().equals(productId));
+
+    recalculateTotal();
+  }
+
+  public void submit() {
+    if (status != OrderStatus.CREATED) {
+      throw new IllegalStateException("Order cannot be submitted");
     }
-
-    // --- Factory method ---
-    public static Order create(UUID customerId) {
-        Objects.requireNonNull(customerId, "customerId must not be null");
-
-        Order order = new Order();
-        order.customerId = customerId;
-        order.status = OrderStatus.CREATED;
-        order.totalAmount = BigDecimal.ZERO;
-        order.createdAt = Instant.now();
-
-        return order;
+    if (items.isEmpty()) {
+      throw new IllegalStateException("Order must have at least one item");
     }
+    this.status = OrderStatus.SUBMITTED;
+  }
 
-    // --- Domain behavior ---
-
-    public void addItem(UUID productId, BigDecimal price, int quantity) {
-        ensureModifiable();
-
-        validateItem(productId, price, quantity);
-
-        OrderItem item = new OrderItem(this, productId, price, quantity);
-        items.add(item);
-
-        recalculateTotal();
+  public void markPaid() {
+    if (status != OrderStatus.SUBMITTED) {
+      throw new IllegalStateException("Order must be submitted before payment");
     }
+    this.status = OrderStatus.PAID;
+  }
 
-    public void removeItem(UUID productId) {
-        ensureModifiable();
-
-        items.removeIf(i -> i.getProductId().equals(productId));
-
-        recalculateTotal();
+  public void cancel() {
+    if (status == OrderStatus.SHIPPED) {
+      throw new IllegalStateException("Cannot cancel shipped order");
     }
+    this.status = OrderStatus.CANCELLED;
+  }
 
-    public void submit() {
-        if (status != OrderStatus.CREATED) {
-            throw new IllegalStateException("Order cannot be submitted");
-        }
-        if (items.isEmpty()) {
-            throw new IllegalStateException("Order must have at least one item");
-        }
-        this.status = OrderStatus.SUBMITTED;
+  // --- Internal logic ---
+
+  private void recalculateTotal() {
+    this.totalAmount =
+        items.stream().map(OrderItem::getSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
+  }
+
+  private void ensureModifiable() {
+    if (status != OrderStatus.CREATED) {
+      throw new IllegalStateException("Order cannot be modified in state: " + status);
     }
+  }
 
-    public void markPaid() {
-        if (status != OrderStatus.SUBMITTED) {
-            throw new IllegalStateException("Order must be submitted before payment");
-        }
-        this.status = OrderStatus.PAID;
+  private void validateItem(UUID productId, BigDecimal price, int quantity) {
+    Objects.requireNonNull(productId, "productId must not be null");
+    Objects.requireNonNull(price, "price must not be null");
+
+    if (price.compareTo(BigDecimal.ZERO) <= 0) {
+      throw new IllegalArgumentException("price must be positive");
     }
-
-    public void cancel() {
-        if (status == OrderStatus.SHIPPED) {
-            throw new IllegalStateException("Cannot cancel shipped order");
-        }
-        this.status = OrderStatus.CANCELLED;
+    if (quantity <= 0) {
+      throw new IllegalArgumentException("quantity must be positive");
     }
+  }
 
-    // --- Internal logic ---
+  // --- Getters ---
 
-    private void recalculateTotal() {
-        this.totalAmount = items.stream().map(OrderItem::getSubtotal).reduce(BigDecimal.ZERO, BigDecimal::add);
-    }
+  public UUID getId() {
+    return id;
+  }
 
-    private void ensureModifiable() {
-        if (status != OrderStatus.CREATED) {
-            throw new IllegalStateException("Order cannot be modified in state: " + status);
-        }
-    }
+  public UUID getCustomerId() {
+    return customerId;
+  }
 
-    private void validateItem(UUID productId, BigDecimal price, int quantity) {
-        Objects.requireNonNull(productId, "productId must not be null");
-        Objects.requireNonNull(price, "price must not be null");
+  public OrderStatus getStatus() {
+    return status;
+  }
 
-        if (price.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("price must be positive");
-        }
-        if (quantity <= 0) {
-            throw new IllegalArgumentException("quantity must be positive");
-        }
-    }
+  public BigDecimal getTotalAmount() {
+    return totalAmount;
+  }
 
-    // --- Getters ---
+  public Instant getCreatedAt() {
+    return createdAt;
+  }
 
-    public UUID getId() {
-        return id;
-    }
+  public List<OrderItem> getItems() {
+    return Collections.unmodifiableList(items);
+  }
 
-    public UUID getCustomerId() {
-        return customerId;
-    }
+  // --- equals / hashCode ---
 
-    public OrderStatus getStatus() {
-        return status;
-    }
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) return true;
+    if (!(o instanceof Order other)) return false;
+    return id != null && id.equals(other.id);
+  }
 
-    public BigDecimal getTotalAmount() {
-        return totalAmount;
-    }
-
-    public Instant getCreatedAt() {
-        return createdAt;
-    }
-
-    public List<OrderItem> getItems() {
-        return Collections.unmodifiableList(items);
-    }
-
-    // --- equals / hashCode ---
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (!(o instanceof Order other)) return false;
-        return id != null && id.equals(other.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return getClass().hashCode();
-    }
+  @Override
+  public int hashCode() {
+    return getClass().hashCode();
+  }
 }

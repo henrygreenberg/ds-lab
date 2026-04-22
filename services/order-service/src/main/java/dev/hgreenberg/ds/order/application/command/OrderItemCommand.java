@@ -2,5 +2,4 @@ package dev.hgreenberg.ds.order.application.command;
 
 import java.util.UUID;
 
-public record OrderItemCommand(UUID productId, int quantity) {
-}
+public record OrderItemCommand(UUID productId, int quantity) {}

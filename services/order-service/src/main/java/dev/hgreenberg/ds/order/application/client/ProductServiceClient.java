@@ -5,8 +5,7 @@ import java.util.UUID;
 
 public interface ProductServiceClient {
 
-    ProductData getProduct(UUID productId);
+  ProductData getProduct(UUID productId);
 
-    record ProductData(UUID id, BigDecimal price) {
-    }
+  record ProductData(UUID id, BigDecimal price) {}
 }
